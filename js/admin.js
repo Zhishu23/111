@@ -30,6 +30,7 @@ const contentInput = document.getElementById('content');
 const idInput = document.getElementById('id');
 const saveBtn = document.getElementById('save-btn');
 const newBtn = document.getElementById('new-btn');
+const deleteBtn = document.getElementById('delete-btn');
 const exportBtn = document.getElementById('export-btn');
 const articlesList = document.getElementById('articles-list');
 
@@ -62,6 +63,7 @@ function init() {
     logoutBtn.addEventListener('click', handleLogout);
     saveBtn.addEventListener('click', handleSaveArticle);
     newBtn.addEventListener('click', handleNewArticle);
+    deleteBtn.addEventListener('click', handleDeleteArticle);
     exportBtn.addEventListener('click', handleExportArticles);
     
     // 绑定页面管理事件
@@ -598,6 +600,51 @@ function exportArticlesToJSON() {
     URL.revokeObjectURL(url);
     
     showMessage('文章数据已导出为JSON文件！请将此文件替换到data目录中。', 'success');
+}
+
+// 处理删除文章
+async function handleDeleteArticle() {
+    // 检查是否有选中的文章
+    if (!currentArticle) {
+        showMessage('请先选择要删除的文章！', 'error');
+        return;
+    }
+    
+    // 显示确认对话框
+    const confirmed = confirm('确定要删除这篇文章吗？此操作不可恢复！');
+    if (!confirmed) {
+        return;
+    }
+    
+    try {
+        // 从文章数组中删除文章
+        const index = articles.findIndex(a => a.id === currentArticle.id);
+        if (index !== -1) {
+            articles.splice(index, 1);
+        }
+        
+        // 保存到localStorage
+        saveArticlesToLocalStorage();
+        
+        // 保存到JSON文件
+        const jsonSaved = await saveArticlesToJSON();
+        
+        // 显示消息
+        if (jsonSaved) {
+            showMessage('文章删除成功并已自动同步到博客！', 'success');
+        } else {
+            showMessage('文章删除成功，但同步到博客失败！', 'warning');
+        }
+        
+        // 重新渲染文章列表
+        renderArticlesList();
+        
+        // 清空表单
+        clearForm();
+    } catch (error) {
+        console.error('删除文章出错:', error);
+        showMessage('删除文章失败！', 'error');
+    }
 }
 
 // 处理导出文章
