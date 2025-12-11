@@ -137,8 +137,10 @@ function renderArticleList() {
         articles.forEach(article => {
             const articleCard = document.createElement('div');
             articleCard.className = 'blog-card';
+            // 只在有图片时渲染图片标签
+            const imageHtml = article.image ? `<img src="${article.image}" alt="${article.title}">` : '';
             articleCard.innerHTML = `
-                <img src="${article.image}" alt="${article.title}">
+                ${imageHtml}
                 <div class="blog-card-content">
                     <h3>${article.title}</h3>
                     <div class="meta">
