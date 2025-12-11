@@ -1,0 +1,27 @@
+{
+  "home": {
+    "pageTitle": "Zhishu的博客",
+    "logo": "Zhishu的博客",
+    "navLinks": [
+      { "text": "首页", "url": "index.html" },
+      { "text": "关于", "url": "about.html" }
+    ],
+    "footerText": "© 2025 Zhishu的博客. All rights reserved."
+  },
+  "about": {
+    "pageTitle": "关于我 - Zhishu的博客",
+    "sectionTitle": "关于我",
+    "content": [
+      "你好！欢迎来到我的个人博客。",
+      "我是一名热爱学习和分享的技术爱好者，在这里我会记录我的学习心得、技术笔记和生活感悟。",
+      "这个博客是我用HTML、CSS和JavaScript创建的，虽然简单但充满了我的心血。",
+      "如果你对我的文章感兴趣，欢迎关注我的博客，也可以通过下方联系方式与我交流。"
+    ],
+    "contactTitle": "联系方式",
+    "contactInfo": [
+      { "type": "邮箱", "value": "your@email.com" },
+      { "type": "GitHub", "value": "github.com/yourusername" },
+      { "type": "微信", "value": "yourwechat" }
+    ]
+  }
+}

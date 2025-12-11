@@ -7,6 +7,10 @@ const ADMIN_PASSWORD = 'admin123';
 let articles = [];
 let currentArticle = null;
 
+// 页面数据
+let pages = {};
+let currentPage = 'home';
+
 // DOM元素
 const loginSection = document.getElementById('login-section');
 const adminSection = document.getElementById('admin-section');
@@ -14,6 +18,8 @@ const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const passwordInput = document.getElementById('password');
 const message = document.getElementById('message');
+
+// 文章管理DOM元素
 const articleForm = document.getElementById('article-form');
 const titleInput = document.getElementById('title');
 const dateInput = document.getElementById('date');
@@ -27,18 +33,45 @@ const newBtn = document.getElementById('new-btn');
 const exportBtn = document.getElementById('export-btn');
 const articlesList = document.getElementById('articles-list');
 
+// 页面管理DOM元素
+const tabButtons = document.querySelectorAll('.tab-button');
+const tabContents = document.querySelectorAll('.tab-content');
+const pageSelect = document.getElementById('page-select');
+const homePageForm = document.getElementById('home-page-form');
+const aboutPageForm = document.getElementById('about-page-form');
+const homePageTitle = document.getElementById('home-page-title');
+const homeLogo = document.getElementById('home-logo');
+const homeFooter = document.getElementById('home-footer');
+const aboutPageTitle = document.getElementById('about-page-title');
+const aboutSectionTitle = document.getElementById('about-section-title');
+const aboutContent = document.getElementById('about-content');
+const aboutContactTitle = document.getElementById('about-contact-title');
+const contactInfo = document.getElementById('contact-info');
+const addAboutParagraphBtn = document.getElementById('add-about-paragraph');
+const addContactInfoBtn = document.getElementById('add-contact-info');
+const savePageBtn = document.getElementById('save-page-btn');
+
 // 初始化
 function init() {
     // 设置默认日期为今天
     const today = new Date().toISOString().split('T')[0];
     dateInput.value = today;
     
-    // 绑定事件
+    // 绑定文章管理事件
     loginBtn.addEventListener('click', handleLogin);
     logoutBtn.addEventListener('click', handleLogout);
     saveBtn.addEventListener('click', handleSaveArticle);
     newBtn.addEventListener('click', handleNewArticle);
     exportBtn.addEventListener('click', handleExportArticles);
+    
+    // 绑定页面管理事件
+    tabButtons.forEach(button => {
+        button.addEventListener('click', handleTabChange);
+    });
+    pageSelect.addEventListener('change', handlePageSelectChange);
+    addAboutParagraphBtn.addEventListener('click', addAboutParagraph);
+    addContactInfoBtn.addEventListener('click', addContactInfo);
+    savePageBtn.addEventListener('click', handleSavePage);
     
     // 按Enter键登录
     passwordInput.addEventListener('keypress', async (e) => {
@@ -59,6 +92,7 @@ async function handleLogin() {
         localStorage.setItem('adminLoggedIn', 'true');
         showAdminSection();
         await loadArticles();
+        await loadPages();
     } else {
         showMessage('密码错误，请重新输入！', 'error');
         passwordInput.value = '';
@@ -70,6 +104,275 @@ function handleLogout() {
     localStorage.setItem('adminLoggedIn', 'false');
     showLoginSection();
     clearForm();
+}
+
+// 处理标签页切换
+function handleTabChange(e) {
+    const targetTab = e.target.dataset.tab;
+    
+    // 更新标签按钮状态
+    tabButtons.forEach(button => {
+        button.classList.remove('active');
+    });
+    e.target.classList.add('active');
+    
+    // 更新标签内容显示
+    tabContents.forEach(content => {
+        content.classList.remove('active');
+    });
+    document.getElementById(`${targetTab}-tab`).classList.add('active');
+    
+    // 如果切换到页面管理标签，确保页面数据已加载
+    if (targetTab === 'pages' && Object.keys(pages).length > 0) {
+        loadPageToForm(currentPage);
+    }
+}
+
+// 处理页面选择切换
+function handlePageSelectChange(e) {
+    currentPage = e.target.value;
+    
+    // 显示对应页面的表单
+    homePageForm.style.display = currentPage === 'home' ? 'block' : 'none';
+    aboutPageForm.style.display = currentPage === 'about' ? 'block' : 'none';
+    
+    // 加载选中页面的数据
+    loadPageToForm(currentPage);
+}
+
+// 加载页面数据
+async function loadPages() {
+    try {
+        // 从JSON文件加载数据
+        const response = await fetch('data/pages.json');
+        if (response.ok) {
+            pages = await response.json();
+        } else {
+            // 如果JSON文件不存在或加载失败，使用默认数据
+            pages = {
+                home: {
+                    pageTitle: "Zhishu的博客",
+                    logo: "Zhishu的博客",
+                    navLinks: [
+                        { "text": "首页", "url": "index.html" },
+                        { "text": "关于", "url": "about.html" }
+                    ],
+                    footerText: "© 2025 Zhishu的博客. All rights reserved."
+                },
+                about: {
+                    pageTitle: "关于我 - Zhishu的博客",
+                    sectionTitle: "关于我",
+                    content: [
+                        "你好！欢迎来到我的个人博客。",
+                        "我是一名热爱学习和分享的技术爱好者，在这里我会记录我的学习心得、技术笔记和生活感悟。",
+                        "这个博客是我用HTML、CSS和JavaScript创建的，虽然简单但充满了我的心血。",
+                        "如果你对我的文章感兴趣，欢迎关注我的博客，也可以通过下方联系方式与我交流。"
+                    ],
+                    contactTitle: "联系方式",
+                    contactInfo: [
+                        { "type": "邮箱", "value": "your@email.com" },
+                        { "type": "GitHub", "value": "github.com/yourusername" },
+                        { "type": "微信", "value": "yourwechat" }
+                    ]
+                }
+            };
+        }
+    } catch (error) {
+        console.error('加载页面数据失败:', error);
+        // 加载失败时，使用默认数据
+        pages = {
+            home: {
+                pageTitle: "Zhishu的博客",
+                logo: "Zhishu的博客",
+                navLinks: [
+                    { "text": "首页", "url": "index.html" },
+                    { "text": "关于", "url": "about.html" }
+                ],
+                footerText: "© 2025 Zhishu的博客. All rights reserved."
+            },
+            about: {
+                pageTitle: "关于我 - Zhishu的博客",
+                sectionTitle: "关于我",
+                content: [
+                    "你好！欢迎来到我的个人博客。",
+                    "我是一名热爱学习和分享的技术爱好者，在这里我会记录我的学习心得、技术笔记和生活感悟。",
+                    "这个博客是我用HTML、CSS和JavaScript创建的，虽然简单但充满了我的心血。",
+                    "如果你对我的文章感兴趣，欢迎关注我的博客，也可以通过下方联系方式与我交流。"
+                ],
+                contactTitle: "联系方式",
+                contactInfo: [
+                    { "type": "邮箱", "value": "your@email.com" },
+                    { "type": "GitHub", "value": "github.com/yourusername" },
+                    { "type": "微信", "value": "yourwechat" }
+                ]
+            }
+        };
+    }
+}
+
+// 加载页面数据到表单
+function loadPageToForm(pageKey) {
+    const pageData = pages[pageKey];
+    if (!pageData) return;
+    
+    if (pageKey === 'home') {
+        homePageTitle.value = pageData.pageTitle;
+        homeLogo.value = pageData.logo;
+        homeFooter.value = pageData.footerText;
+    } else if (pageKey === 'about') {
+        aboutPageTitle.value = pageData.pageTitle;
+        aboutSectionTitle.value = pageData.sectionTitle;
+        aboutContactTitle.value = pageData.contactTitle;
+        
+        // 渲染关于内容段落
+        aboutContent.innerHTML = '';
+        pageData.content.forEach((paragraph, index) => {
+            const paragraphDiv = document.createElement('div');
+            paragraphDiv.className = 'form-group';
+            paragraphDiv.innerHTML = `
+                <div style="display: flex; gap: 1rem;">
+                    <textarea rows="3" class="about-paragraph" style="flex: 1; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; font-family: inherit;">${paragraph}</textarea>
+                    <button type="button" class="remove-contact-btn" onclick="removeAboutParagraph(this)">删除</button>
+                </div>
+            `;
+            aboutContent.appendChild(paragraphDiv);
+        });
+        
+        // 渲染联系方式
+        contactInfo.innerHTML = '';
+        pageData.contactInfo.forEach((contact, index) => {
+            const contactDiv = document.createElement('div');
+            contactDiv.className = 'contact-info-item';
+            contactDiv.innerHTML = `
+                <input type="text" class="contact-type" value="${contact.type}" placeholder="联系方式类型" />
+                <input type="text" class="contact-value" value="${contact.value}" placeholder="联系方式值" />
+                <button type="button" class="remove-contact-btn" onclick="removeContactInfo(this)">删除</button>
+            `;
+            contactInfo.appendChild(contactDiv);
+        });
+    }
+}
+
+// 添加关于页面段落
+function addAboutParagraph() {
+    const paragraphDiv = document.createElement('div');
+    paragraphDiv.className = 'form-group';
+    paragraphDiv.innerHTML = `
+        <div style="display: flex; gap: 1rem;">
+            <textarea rows="3" class="about-paragraph" style="flex: 1; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; font-family: inherit;"></textarea>
+            <button type="button" class="remove-contact-btn" onclick="removeAboutParagraph(this)">删除</button>
+        </div>
+    `;
+    aboutContent.appendChild(paragraphDiv);
+}
+
+// 删除关于页面段落
+function removeAboutParagraph(button) {
+    button.closest('.form-group').remove();
+}
+
+// 添加联系方式
+function addContactInfo() {
+    const contactDiv = document.createElement('div');
+    contactDiv.className = 'contact-info-item';
+    contactDiv.innerHTML = `
+        <input type="text" class="contact-type" placeholder="联系方式类型" />
+        <input type="text" class="contact-value" placeholder="联系方式值" />
+        <button type="button" class="remove-contact-btn" onclick="removeContactInfo(this)">删除</button>
+    `;
+    contactInfo.appendChild(contactDiv);
+}
+
+// 删除联系方式
+function removeContactInfo(button) {
+    button.closest('.contact-info-item').remove();
+}
+
+// 处理保存页面
+async function handleSavePage() {
+    if (currentPage === 'home') {
+        pages.home = {
+            ...pages.home,
+            pageTitle: homePageTitle.value.trim(),
+            logo: homeLogo.value.trim(),
+            footerText: homeFooter.value.trim()
+        };
+    } else if (currentPage === 'about') {
+        // 获取所有段落内容
+        const paragraphTexts = Array.from(document.querySelectorAll('.about-paragraph'))
+            .map(textarea => textarea.value.trim())
+            .filter(text => text !== '');
+        
+        // 获取所有联系方式
+        const contactInfoItems = Array.from(document.querySelectorAll('.contact-info-item'))
+            .map(item => {
+                const type = item.querySelector('.contact-type').value.trim();
+                const value = item.querySelector('.contact-value').value.trim();
+                return { type, value };
+            })
+            .filter(contact => contact.type !== '' && contact.value !== '');
+        
+        pages.about = {
+            ...pages.about,
+            pageTitle: aboutPageTitle.value.trim(),
+            sectionTitle: aboutSectionTitle.value.trim(),
+            content: paragraphTexts,
+            contactTitle: aboutContactTitle.value.trim(),
+            contactInfo: contactInfoItems
+        };
+    }
+    
+    // 保存到JSON文件
+    const jsonSaved = await savePagesToJSON();
+    
+    // 显示消息
+    if (jsonSaved) {
+        showMessage('页面更新成功并已自动同步到博客！', 'success');
+    } else {
+        showMessage('页面更新成功，但同步到博客失败！', 'warning');
+    }
+}
+
+// 保存页面数据到JSON文件
+async function savePagesToJSON() {
+    try {
+        // 确保使用当前服务器的URL
+        const serverUrl = window.location.origin;
+        const pagesUrl = `${serverUrl}/data/pages.json`;
+        
+        console.log('尝试保存页面数据到JSON文件...');
+        console.log('请求URL:', pagesUrl);
+        console.log('请求数据:', pages);
+        
+        const response = await fetch(pagesUrl, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(pages, null, 2)
+        });
+        
+        console.log('服务器响应状态:', response.status, response.statusText);
+        
+        // 获取完整响应内容
+        const responseText = await response.text();
+        console.log('服务器响应内容:', responseText);
+        
+        if (response.ok) {
+            console.log('页面数据已成功保存到JSON文件');
+            return true;
+        } else {
+            console.error('保存到JSON文件失败:', response.statusText);
+            console.error('响应内容:', responseText);
+            return false;
+        }
+    } catch (error) {
+        console.error('保存到JSON文件出错:', error);
+        console.error('错误类型:', error.name);
+        console.error('错误信息:', error.message);
+        console.error('错误堆栈:', error.stack);
+        return false;
+    }
 }
 
 // 显示登录界面
