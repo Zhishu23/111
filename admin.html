@@ -145,6 +145,26 @@
             background-color: #e68a00;
         }
         
+        .page-filter {
+            margin: 1rem 0;
+            padding: 0.5rem;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+        
+        .page-filter label {
+            margin-right: 0.5rem;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .page-filter select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
         .articles-list {
             margin-top: 2rem;
             max-height: 300px;
@@ -386,6 +406,12 @@
 
                     <!-- 文章列表 -->
                     <h3>文章列表</h3>
+                    <div class="page-filter">
+                        <label for="page-filter-select">按页面筛选：</label>
+                        <select id="page-filter-select">
+                            <option value="all">所有页面</option>
+                        </select>
+                    </div>
                     <div class="articles-list" id="articles-list">
                         <!-- 文章列表将通过JavaScript动态生成 -->
                     </div>
@@ -508,6 +534,63 @@
             <p>&copy; 2025 Zhishu的博客. All rights reserved.</p>
         </div>
     </footer>
+
+    <!-- 自定义模态对话框 -->
+    <div id="custom-modal" style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    ">
+        <div style="
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            min-width: 400px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        ">
+            <h3 id="modal-title">请输入</h3>
+            <div id="modal-input" style="
+                width: 100%;
+                margin: 1rem 0;
+            ">
+                <input type="text" id="modal-input-field" style="
+                    width: 100%;
+                    padding: 0.8rem;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    font-size: 1rem;
+                " placeholder="输入内容">
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button id="modal-cancel" style="
+                    padding: 0.8rem 1.5rem;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    font-size: 1rem;
+                    cursor: pointer;
+                    background-color: white;
+                    transition: background-color 0.3s ease;
+                ">取消</button>
+                <button id="modal-confirm" style="
+                    padding: 0.8rem 1.5rem;
+                    border: none;
+                    border-radius: 4px;
+                    font-size: 1rem;
+                    cursor: pointer;
+                    background-color: #4CAF50;
+                    color: white;
+                    transition: background-color 0.3s ease;
+                ">确定</button>
+            </div>
+        </div>
+    </div>
 
     <script src="js/admin.js"></script>
 </body>

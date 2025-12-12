@@ -1,20 +1,17 @@
-// 从localStorage和JSON文件加载文章数据
+// 从API加载文章数据
 let articles = [];
 
 async function loadArticles() {
     try {
-        // 优先从localStorage加载数据
-        const savedArticles = localStorage.getItem('blogArticles');
-        if (savedArticles) {
-            articles = JSON.parse(savedArticles);
-            console.log('从localStorage加载文章数据成功');
+        // 从API加载数据
+        const response = await fetch('/api/articles');
+        if (response.ok) {
+            articles = await response.json();
+            console.log('从API加载文章数据成功');
             return articles;
         } else {
-            // 如果localStorage没有数据，从JSON文件加载
-            const response = await fetch('data/articles.json');
-            articles = await response.json();
-            console.log('从JSON文件加载文章数据成功');
-            return articles;
+            console.error('从API加载文章数据失败:', response.statusText);
+            return [];
         }
     } catch (error) {
         console.error('加载文章失败:', error);
@@ -22,34 +19,61 @@ async function loadArticles() {
     }
 }
 
-// 从JSON文件和localStorage加载页面数据
+// 从API加载页面数据
 let pages = {};
 
 async function loadPages() {
     try {
-        // 优先从localStorage加载数据
-        const savedPages = localStorage.getItem('blogPages');
-        if (savedPages) {
-            pages = JSON.parse(savedPages);
-            console.log('从localStorage加载页面数据成功');
+        // 从API加载数据
+        const response = await fetch('/api/pages');
+        if (response.ok) {
+            pages = await response.json();
+            console.log('从API加载页面数据成功');
             return pages;
         } else {
-            // 如果localStorage没有数据，从JSON文件加载
-            const response = await fetch('data/pages.json');
-            pages = await response.json();
-            console.log('从JSON文件加载页面数据成功');
+            console.error('从API加载页面数据失败:', response.statusText);
+            // 使用默认数据
+            pages = {
+                home: {
+                    pageTitle: "Zhishu的博客",
+                    logo: "Zhishu的博客",
+                    navLinks: [
+                        { "text": "首页", "url": "index.html" },
+                        { "text": "关于", "url": "about.html" },
+                        { "text": "后台管理", "url": "admin.html" }
+                    ],
+                    footerText: "© 2025 Zhishu的博客. All rights reserved."
+                },
+                about: {
+                    pageTitle: "关于我 - Zhishu的博客",
+                    sectionTitle: "关于我",
+                    content: [
+                        "你好！欢迎来到我的个人博客。",
+                        "我是一名热爱学习和分享的技术爱好者，在这里我会记录我的学习心得、技术笔记和生活感悟。",
+                        "这个博客是我用HTML、CSS和JavaScript创建的，虽然简单但充满了我的心血。",
+                        "如果你对我的文章感兴趣，欢迎关注我的博客，也可以通过下方联系方式与我交流。"
+                    ],
+                    contactTitle: "联系方式",
+                    contactInfo: [
+                        { "type": "邮箱", "value": "your@email.com" },
+                        { "type": "GitHub", "value": "github.com/yourusername" },
+                        { "type": "微信", "value": "yourwechat" }
+                    ]
+                }
+            };
             return pages;
         }
     } catch (error) {
         console.error('加载页面数据失败:', error);
         // 使用默认数据
-        return {
+        pages = {
             home: {
                 pageTitle: "Zhishu的博客",
                 logo: "Zhishu的博客",
                 navLinks: [
                     { "text": "首页", "url": "index.html" },
-                    { "text": "关于", "url": "about.html" }
+                    { "text": "关于", "url": "about.html" },
+                    { "text": "后台管理", "url": "admin.html" }
                 ],
                 footerText: "© 2025 Zhishu的博客. All rights reserved."
             },
@@ -70,6 +94,7 @@ async function loadPages() {
                 ]
             }
         };
+        return pages;
     }
 }
 
@@ -79,28 +104,61 @@ function renderNavbar() {
     const siteTitle = document.querySelector('.site-title');
     const navLinks = document.querySelector('.nav-links');
     
-    if (logo && pages.home && pages.home.logo) {
+    // 确保pages.home存在
+    if (!pages.home) {
+        pages.home = {
+            pageTitle: "Zhishu的博客",
+            logo: "Zhishu的博客",
+            navLinks: [
+                { "text": "首页", "url": "index.html" },
+                { "text": "关于", "url": "about.html" },
+                { "text": "后台管理", "url": "admin.html" }
+            ],
+            footerText: "© 2025 Zhishu的博客. All rights reserved."
+        };
+    }
+    
+    // 确保logo存在
+    if (!pages.home.logo) {
+        pages.home.logo = "Zhishu的博客";
+    }
+    
+    // 确保导航链接存在
+    if (!pages.home.navLinks || pages.home.navLinks.length === 0) {
+        pages.home.navLinks = [
+            { "text": "首页", "url": "index.html" },
+            { "text": "关于", "url": "about.html" },
+            { "text": "后台管理", "url": "admin.html" }
+        ];
+    }
+    
+    if (logo) {
         const logoData = pages.home.logo;
         
-        if (logoData.type === 'image') {
-            // 图片LOGO
-            logo.innerHTML = `<img src="${logoData.value}" alt="网站LOGO" style="max-height: 60px; width: auto; vertical-align: middle;">`;
+        if (typeof logoData === 'object' && logoData.type) {
+            if (logoData.type === 'image') {
+                // 图片LOGO
+                logo.innerHTML = `<img src="${logoData.value || ''}" alt="网站LOGO" style="max-height: 60px; width: auto; vertical-align: middle;">`;
+            } else {
+                // 文字LOGO
+                logo.innerHTML = `<span style="font-size: 1.5rem; font-weight: bold;">${logoData.value || 'Zhishu的博客'}</span>`;
+            }
         } else {
-            // 文字LOGO
-            logo.innerHTML = `<span style="font-size: 1.5rem; font-weight: bold;">${logoData.value || logoData}</span>`;
+            // 旧格式的LOGO
+            logo.innerHTML = `<span style="font-size: 1.5rem; font-weight: bold;">${logoData || 'Zhishu的博客'}</span>`;
         }
     }
     
     // 更新网站标题
-    if (siteTitle && pages.home && pages.home.pageTitle) {
-        siteTitle.textContent = pages.home.pageTitle;
+    if (siteTitle) {
+        siteTitle.textContent = pages.home.pageTitle || 'Zhishu的博客';
     }
     
-    if (navLinks && pages.home && pages.home.navLinks) {
+    if (navLinks) {
         navLinks.innerHTML = '';
         pages.home.navLinks.forEach(link => {
             const li = document.createElement('li');
-            li.innerHTML = `<a href="${link.url}">${link.text}</a>`;
+            li.innerHTML = `<a href="${link.url || '#'}">${link.text || '链接'}</a>`;
             navLinks.appendChild(li);
         });
     }
@@ -169,7 +227,11 @@ function renderArticleList() {
     const articleList = document.getElementById('blog-list');
     if (articleList) {
         articleList.innerHTML = '';
-        articles.forEach(article => {
+        
+        // 只显示属于首页的文章
+        const homeArticles = articles.filter(article => article.pageId === 'home');
+        
+        homeArticles.forEach(article => {
             const articleCard = document.createElement('div');
             articleCard.className = 'blog-card';
             // 只在有图片时渲染图片标签
@@ -235,9 +297,42 @@ function renderCustomPage() {
             // 更新页面内容
             const pageContent = document.getElementById('page-content');
             if (pageContent) {
-                // 确保content是数组，如果不是则转换为数组
-                const contentArray = Array.isArray(pageData.content) ? pageData.content : [pageData.content];
-                pageContent.innerHTML = contentArray.map(paragraph => `<p>${paragraph}</p>`).join('');
+                if (pageData.type === 'article') {
+                    // 如果是文章类页面，显示文章列表
+                    const pageArticles = articles.filter(article => article.pageId === pageKey);
+                    
+                    if (pageArticles.length === 0) {
+                        pageContent.innerHTML = '<p>该页面暂无文章。</p>';
+                    } else {
+                        // 渲染文章列表，与首页结构类似
+                        pageContent.innerHTML = `<div id="blog-list" class="blog-list"></div>`;
+                        const articleList = document.getElementById('blog-list');
+                        
+                        pageArticles.forEach(article => {
+                            const articleCard = document.createElement('div');
+                            articleCard.className = 'blog-card';
+                            // 只在有图片时渲染图片标签
+                            const imageHtml = article.image ? `<img src="${article.image}" alt="${article.title}">` : '';
+                            articleCard.innerHTML = `
+                                ${imageHtml}
+                                <div class="blog-card-content">
+                                    <h3>${article.title}</h3>
+                                    <div class="meta">
+                                        <span>${article.date}</span> • <span>${article.author}</span>
+                                    </div>
+                                    <p class="excerpt">${article.excerpt}</p>
+                                    <a href="post.html?id=${article.id}" class="read-more">阅读更多</a>
+                                </div>
+                            `;
+                            articleList.appendChild(articleCard);
+                        });
+                    }
+                } else {
+                    // 如果是其他类型页面，显示静态内容
+                    // 确保content是数组，如果不是则转换为数组
+                    const contentArray = Array.isArray(pageData.content) ? pageData.content : [pageData.content];
+                    pageContent.innerHTML = contentArray.map(paragraph => `<p>${paragraph}</p>`).join('');
+                }
             }
         } else {
             // 页面不存在

@@ -1,7 +1,13 @@
 {
   "home": {
+    "id": "home",
+    "name": "首页",
+    "type": "article",
     "pageTitle": "Zhishu的博客",
-    "logo": "Zhishu的博客",
+    "logo": {
+      "type": "text",
+      "value": "Zhishu的博客"
+    },
     "navLinks": [
       {
         "text": "首页",
@@ -12,13 +18,42 @@
         "url": "about.html"
       },
       {
-        "text": "资源",
-        "url": "page.html?page=资源"
+        "text": "新链接",
+        "url": "#"
+      },
+      {
+        "text": "111",
+        "url": "page.html?page=06116a1e"
+      },
+      {
+        "text": "111",
+        "url": "page.html?page=130c8f5e"
+      },
+      {
+        "text": "111",
+        "url": "page.html?page=851afd50"
+      },
+      {
+        "text": "测试页面",
+        "url": "page.html?page=b849f48f"
+      },
+      {
+        "text": "big Dick",
+        "url": "page.html?page=39c43c2c"
+      },
+      {
+        "text": "111",
+        "url": "page.html?page=793e6e37"
       }
     ],
-    "footerText": "© 2025 Zhishu的博客. All rights reserved."
+    "footerText": "© 2025 Zhishu的博客. All rights reserved.",
+    "createdAt": "2025-12-12T19:37:07.406716",
+    "updatedAt": "2025-12-12T20:37:53.662030"
   },
   "about": {
+    "id": "about",
+    "name": "关于",
+    "type": "blank",
     "pageTitle": "关于我 - Zhishu的博客",
     "sectionTitle": "关于我",
     "content": [
@@ -41,12 +76,88 @@
         "type": "微信",
         "value": "yourwechat"
       }
+    ],
+    "createdAt": "2025-12-12T19:37:07.004485",
+    "updatedAt": "2025-12-12T19:52:46.998033"
+  },
+  "06116a1e": {
+    "name": "111",
+    "type": "resource",
+    "pageTitle": "111 - Zhishu的博客",
+    "id": "06116a1e",
+    "createdAt": "2025-12-12T19:57:28.414146",
+    "updatedAt": "2025-12-12T19:57:28.414151",
+    "resources": []
+  },
+  "130c8f5e": {
+    "name": "111",
+    "type": "article",
+    "pageTitle": "111 - Zhishu的博客",
+    "id": "130c8f5e",
+    "createdAt": "2025-12-12T19:57:37.076831",
+    "updatedAt": "2025-12-12T19:57:37.076838",
+    "logo": {
+      "type": "text",
+      "value": "111"
+    },
+    "navLinks": [],
+    "footerText": "© 2025 111. All rights reserved."
+  },
+  "851afd50": {
+    "name": "111",
+    "type": "game",
+    "pageTitle": "111 - Zhishu的博客",
+    "id": "851afd50",
+    "createdAt": "2025-12-12T19:57:43.059621",
+    "updatedAt": "2025-12-12T19:57:43.059628",
+    "games": []
+  },
+  "b849f48f": {
+    "name": "测试页面",
+    "type": "blank",
+    "pageTitle": "测试页面 - Zhishu的博客",
+    "id": "b849f48f",
+    "createdAt": "2025-12-12T20:06:28.484464",
+    "updatedAt": "2025-12-12T20:06:28.484469",
+    "content": [
+      "这是测试页面页面的内容。"
+    ],
+    "sectionTitle": "测试页面",
+    "contactTitle": "联系方式",
+    "contactInfo": []
+  },
+  "39c43c2c": {
+    "name": "big Dick",
+    "type": "article",
+    "pageTitle": "big Dick - Zhishu的博客",
+    "id": "39c43c2c",
+    "createdAt": "2025-12-12T20:07:02.502785",
+    "updatedAt": "2025-12-12T20:07:02.502792",
+    "logo": {
+      "type": "text",
+      "value": "big Dick"
+    },
+    "navLinks": [],
+    "footerText": "© 2025 big Dick. All rights reserved.",
+    "content": [
+      "这是big Dick页面的内容。"
     ]
   },
-  "资源": {
-    "pageTitle": "资源 - Zhishu的博客",
+  "793e6e37": {
+    "name": "111",
+    "type": "article",
+    "pageTitle": "111 - Zhishu的博客",
+    "id": "793e6e37",
+    "createdAt": "2025-12-12T20:37:53.662018",
+    "updatedAt": "2025-12-12T20:37:53.662024",
+    "logo": {
+      "type": "text",
+      "value": "111"
+    },
+    "navLinks": [],
+    "footerText": "© 2025 111. All rights reserved.",
     "content": [
-      "这是资源页面的内容。"
+      "这是111页面的内容。"
     ]
   }
 }

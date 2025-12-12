@@ -1,0 +1,14 @@
+{
+  "theme": "light",
+  "colors": {
+    "primary": "#3498db",
+    "secondary": "#2ecc71",
+    "background": "#ffffff",
+    "text": "#333333"
+  },
+  "layout": {
+    "sidebar": false,
+    "footer": true,
+    "breadcrumb": false
+  }
+}

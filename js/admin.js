@@ -19,6 +19,16 @@ const logoutBtn = document.getElementById('logout-btn');
 const passwordInput = document.getElementById('password');
 const message = document.getElementById('message');
 
+// 自定义模态框DOM元素
+const customModal = document.getElementById('custom-modal');
+const modalTitle = document.getElementById('modal-title');
+const modalInput = document.getElementById('modal-input');
+const modalConfirmBtn = document.getElementById('modal-confirm');
+const modalCancelBtn = document.getElementById('modal-cancel');
+
+// 模态框回调函数
+let modalCallback = null;
+
 // 文章管理DOM元素
 const articleForm = document.getElementById('article-form');
 const titleInput = document.getElementById('title');
@@ -33,6 +43,7 @@ const newBtn = document.getElementById('new-btn');
 const deleteBtn = document.getElementById('delete-btn');
 const exportBtn = document.getElementById('export-btn');
 const articlesList = document.getElementById('articles-list');
+const pageFilterSelect = document.getElementById('page-filter-select');
 
 // 页面管理DOM元素
 const tabButtons = document.querySelectorAll('.tab-button');
@@ -59,8 +70,78 @@ const addAboutParagraphBtn = document.getElementById('add-about-paragraph');
 const addContactInfoBtn = document.getElementById('add-contact-info');
 const savePageBtn = document.getElementById('save-page-btn');
 
+// 显示自定义模态框
+function showModal(title, placeholder = '', callback) {
+    modalTitle.textContent = title;
+    
+    // 恢复默认的输入字段
+    modalInput.innerHTML = `
+        <input type="text" id="modal-input-field" style="
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        " placeholder="${placeholder}">
+    `;
+    
+    const inputField = document.getElementById('modal-input-field');
+    if (inputField) {
+        inputField.value = '';
+        inputField.placeholder = placeholder;
+    }
+    
+    modalCallback = callback;
+    customModal.style.display = 'flex';
+    
+    if (inputField) {
+        inputField.focus();
+    }
+}
+
+// 隐藏自定义模态框
+function hideModal() {
+    customModal.style.display = 'none';
+    const inputField = document.getElementById('modal-input-field');
+    if (inputField) {
+        inputField.value = '';
+    }
+    modalCallback = null;
+}
+
+// 处理模态框确认
+function handleModalConfirm() {
+    if (modalCallback) {
+        // 检查是否存在单选按钮组
+        const radioButtons = document.querySelectorAll('input[name="page-type"]');
+        if (radioButtons.length > 0) {
+            // 如果是页面类型选择模态框，获取选中的类型
+            const selectedRadio = document.querySelector('input[name="page-type"]:checked');
+            modalCallback(selectedRadio ? selectedRadio.value : null);
+        } else {
+            // 否则，尝试获取输入框内容
+            const inputField = document.getElementById('modal-input-field');
+            modalCallback(inputField ? inputField.value : null);
+        }
+    }
+    // 只有当不是页面类型选择模态框时才隐藏模态框
+    // 页面类型选择模态框会在自己的回调中处理隐藏
+    const radioButtons = document.querySelectorAll('input[name="page-type"]');
+    if (radioButtons.length === 0) {
+        hideModal();
+    }
+}
+
+// 处理模态框取消
+function handleModalCancel() {
+    if (modalCallback) {
+        modalCallback(null);
+    }
+    hideModal();
+}
+
 // 初始化
-function init() {
+async function init() {
     // 设置默认日期为今天
     const today = new Date().toISOString().split('T')[0];
     dateInput.value = today;
@@ -84,12 +165,37 @@ function init() {
     addContactInfoBtn.addEventListener('click', addContactInfo);
     savePageBtn.addEventListener('click', handleSavePage);
     
+    // 绑定模态框事件
+    modalConfirmBtn.addEventListener('click', handleModalConfirm);
+    modalCancelBtn.addEventListener('click', handleModalCancel);
+    
+    // 模态框按Enter键确认，按Esc键取消
+    document.addEventListener('keydown', (e) => {
+        if (customModal.style.display === 'flex') {
+            if (e.key === 'Enter') {
+                handleModalConfirm();
+            } else if (e.key === 'Escape') {
+                handleModalCancel();
+            }
+        }
+    });
+    
+    // 点击模态框外部关闭
+    customModal.addEventListener('click', (e) => {
+        if (e.target === customModal) {
+            hideModal();
+        }
+    });
+    
     // 按Enter键登录
     passwordInput.addEventListener('keypress', async (e) => {
         if (e.key === 'Enter') {
             await handleLogin();
         }
     });
+    
+    // 加载默认页面数据
+    await loadPages();
     
     // 检查是否已登录
     if (localStorage.getItem('adminLoggedIn') === 'true') {
@@ -104,6 +210,10 @@ async function handleLogin() {
         showAdminSection();
         await loadArticles();
         await loadPages();
+        
+        // 确保页面选择器已渲染并加载当前页面数据
+        renderPageSelector();
+        loadPageToForm(currentPage);
     } else {
         showMessage('密码错误，请重新输入！', 'error');
         passwordInput.value = '';
@@ -133,8 +243,9 @@ function handleTabChange(e) {
     });
     document.getElementById(`${targetTab}-tab`).classList.add('active');
     
-    // 如果切换到页面管理标签，确保页面数据已加载
-    if (targetTab === 'pages' && Object.keys(pages).length > 0) {
+    // 如果切换到页面管理标签，确保页面数据已加载并渲染页面选择器
+    if (targetTab === 'pages') {
+        renderPageSelector();
         loadPageToForm(currentPage);
     }
 }
@@ -151,10 +262,36 @@ function handlePageSelectChange(e) {
     loadPageToForm(currentPage);
 }
 
+// 填充页面筛选器
+function populatePageFilter() {
+    if (!pageFilterSelect || !pages) return;
+    
+    // 清空现有选项，只保留"所有页面"选项
+    pageFilterSelect.innerHTML = '<option value="all">所有页面</option>';
+    
+    // 添加所有文章类型的页面
+    Object.values(pages).forEach(page => {
+        if (page.type === 'article') {
+            const option = document.createElement('option');
+            option.value = page.id;
+            option.textContent = page.name;
+            pageFilterSelect.appendChild(option);
+        }
+    });
+    
+    // 添加事件监听器
+    pageFilterSelect.addEventListener('change', handlePageFilterChange);
+}
+
+// 处理页面筛选器变化
+function handlePageFilterChange() {
+    renderArticlesList();
+}
+
 // 渲染页面选择器
 function renderPageSelector() {
     const pageSelect = document.getElementById('page-select');
-    if (!pageSelect) return;
+    if (!pageSelect || !pages) return;
     
     // 保存当前选中的页面
     const currentValue = pageSelect.value;
@@ -181,59 +318,56 @@ function renderPageSelector() {
     } else {
         pageSelect.value = currentPage;
     }
+    
+    // 确保表单显示当前选中页面的内容
+    loadPageToForm(pageSelect.value);
 }
 
 // 加载页面数据
 async function loadPages() {
     try {
-        // 优先从localStorage加载数据
-        const savedPages = localStorage.getItem('blogPages');
-        if (savedPages) {
-            pages = JSON.parse(savedPages);
-            console.log('从localStorage加载页面数据成功');
+        // 从API加载数据
+        const response = await fetch('/api/pages');
+        if (response.ok) {
+            pages = await response.json();
+            console.log('从API加载页面数据成功');
         } else {
-            // 如果localStorage没有数据，尝试从JSON文件加载
-            const response = await fetch('data/pages.json');
-            if (response.ok) {
-                pages = await response.json();
-                console.log('从JSON文件加载页面数据成功');
-            } else {
-                // 如果JSON文件不存在或加载失败，使用默认数据
-                pages = {
-                    home: {
-                        pageTitle: "Zhishu的博客",
-                        logo: "Zhishu的博客",
-                        navLinks: [
-                            { "text": "首页", "url": "index.html" },
-                            { "text": "关于", "url": "about.html" }
-                        ],
-                        footerText: "© 2025 Zhishu的博客. All rights reserved."
-                    },
-                    about: {
-                        pageTitle: "关于我 - Zhishu的博客",
-                        sectionTitle: "关于我",
-                        content: [
-                            "你好！欢迎来到我的个人博客。",
-                            "我是一名热爱学习和分享的技术爱好者，在这里我会记录我的学习心得、技术笔记和生活感悟。",
-                            "这个博客是我用HTML、CSS和JavaScript创建的，虽然简单但充满了我的心血。",
-                            "如果你对我的文章感兴趣，欢迎关注我的博客，也可以通过下方联系方式与我交流。"
-                        ],
-                        contactTitle: "联系方式",
-                        contactInfo: [
-                            { "type": "邮箱", "value": "your@email.com" },
-                            { "type": "GitHub", "value": "github.com/yourusername" },
-                            { "type": "微信", "value": "yourwechat" }
-                        ]
-                    }
-                };
-                console.log('使用默认页面数据');
-            }
+            // 如果API加载失败，使用默认数据
+            pages = {
+                home: {
+                    id: "home",
+                    name: "首页",
+                    type: "article",
+                    pageTitle: "Zhishu的博客",
+                    logo: "Zhishu的博客",
+                    navLinks: [
+                        { "text": "首页", "url": "index.html" },
+                        { "text": "关于", "url": "about.html" }
+                    ],
+                    footerText: "© 2025 Zhishu的博客. All rights reserved."
+                },
+                about: {
+                    id: "about",
+                    name: "关于",
+                    type: "article",
+                    pageTitle: "关于我 - Zhishu的博客",
+                    sectionTitle: "关于我",
+                    content: [
+                        "你好！欢迎来到我的个人博客。",
+                        "我是一名热爱学习和分享的技术爱好者，在这里我会记录我的学习心得、技术笔记和生活感悟。"
+                    ]
+                }
+            };
+            console.log('使用默认页面数据');
         }
     } catch (error) {
         console.error('加载页面数据失败:', error);
         // 加载失败时，使用默认数据
         pages = {
             home: {
+                id: "home",
+                name: "首页",
+                type: "article",
                 pageTitle: "Zhishu的博客",
                 logo: "Zhishu的博客",
                 navLinks: [
@@ -243,19 +377,14 @@ async function loadPages() {
                 footerText: "© 2025 Zhishu的博客. All rights reserved."
             },
             about: {
+                id: "about",
+                name: "关于",
+                type: "article",
                 pageTitle: "关于我 - Zhishu的博客",
                 sectionTitle: "关于我",
                 content: [
                     "你好！欢迎来到我的个人博客。",
-                    "我是一名热爱学习和分享的技术爱好者，在这里我会记录我的学习心得、技术笔记和生活感悟。",
-                    "这个博客是我用HTML、CSS和JavaScript创建的，虽然简单但充满了我的心血。",
-                    "如果你对我的文章感兴趣，欢迎关注我的博客，也可以通过下方联系方式与我交流。"
-                ],
-                contactTitle: "联系方式",
-                contactInfo: [
-                    { "type": "邮箱", "value": "your@email.com" },
-                    { "type": "GitHub", "value": "github.com/yourusername" },
-                    { "type": "微信", "value": "yourwechat" }
+                    "我是一名热爱学习和分享的技术爱好者，在这里我会记录我的学习心得、技术笔记和生活感悟。"
                 ]
             }
         };
@@ -263,6 +392,9 @@ async function loadPages() {
     
     // 渲染页面选择器
     renderPageSelector();
+    
+    // 填充页面筛选器
+    populatePageFilter();
 }
 
 // 加载页面数据到表单
@@ -306,7 +438,7 @@ function loadPageToForm(pageKey) {
         
         // 渲染关于内容段落
         aboutContent.innerHTML = '';
-        pageData.content.forEach((paragraph, index) => {
+        (pageData.content || []).forEach((paragraph, index) => {
             const paragraphDiv = document.createElement('div');
             paragraphDiv.className = 'form-group';
             paragraphDiv.innerHTML = `
@@ -320,7 +452,7 @@ function loadPageToForm(pageKey) {
         
         // 渲染联系方式
         contactInfo.innerHTML = '';
-        pageData.contactInfo.forEach((contact, index) => {
+        (pageData.contactInfo || []).forEach((contact, index) => {
             const contactDiv = document.createElement('div');
             contactDiv.className = 'contact-info-item';
             contactDiv.innerHTML = `
@@ -344,7 +476,7 @@ function loadPageToForm(pageKey) {
         const customContent = document.getElementById('custom-content');
         if (customContent) {
             customContent.innerHTML = '';
-            pageData.content.forEach((paragraph, index) => {
+            (pageData.content || []).forEach((paragraph, index) => {
                 const paragraphDiv = document.createElement('div');
                 paragraphDiv.className = 'form-group';
                 paragraphDiv.innerHTML = `
@@ -417,16 +549,20 @@ function removeCustomParagraph(button) {
 
 // 渲染导航链接
 function renderNavLinks() {
-    if (!navLinksContainer || !pages.home || !pages.home.navLinks) return;
+    if (!navLinksContainer || !pages.home) return;
     
     navLinksContainer.innerHTML = '';
-    pages.home.navLinks.forEach((link, index) => {
+    
+    // 确保 navLinks 是一个数组
+    const navLinks = Array.isArray(pages.home.navLinks) ? pages.home.navLinks : [];
+    
+    navLinks.forEach((link, index) => {
         const linkDiv = document.createElement('div');
         linkDiv.className = 'form-group nav-link-item';
         linkDiv.innerHTML = `
             <div style="display: flex; gap: 1rem;">
-                <input type="text" class="nav-link-text" value="${link.text}" placeholder="链接文字" style="flex: 1;">
-                <input type="text" class="nav-link-url" value="${link.url}" placeholder="链接URL" style="flex: 1;">
+                <input type="text" class="nav-link-text" value="${link.text || ''}" placeholder="链接文字" style="flex: 1;">
+                <input type="text" class="nav-link-url" value="${link.url || ''}" placeholder="链接URL" style="flex: 1;">
                 <button type="button" class="remove-contact-btn" onclick="removeNavLink(this, ${index})">删除</button>
             </div>
         `;
@@ -445,6 +581,8 @@ function addNavLink() {
     });
     
     renderNavLinks();
+    // 保存导航链接到localStorage
+    savePagesToJSON();
 }
 
 // 删除导航链接
@@ -452,6 +590,8 @@ function removeNavLink(button, index) {
     if (pages.home && pages.home.navLinks) {
         pages.home.navLinks.splice(index, 1);
         renderNavLinks();
+        // 保存导航链接到localStorage
+        savePagesToJSON();
     }
 }
 
@@ -479,52 +619,107 @@ function handleLogoTypeChange(e) {
     }
 }
 
-// 处理添加新页面
-function handleAddPage() {
-    const pageName = prompt('请输入新页面名称（如：新闻）：');
-    if (!pageName || pageName.trim() === '') {
-        showMessage('页面名称不能为空！', 'error');
-        return;
-    }
+// 显示页面类型选择模态框
+function showPageTypeModal(pageName, callback) {
+    modalTitle.textContent = '选择页面类型';
     
-    // 生成URL友好的页面键名（转换为英文，替换空格和特殊字符）
-    let pageKey = pageName.trim().toLowerCase();
-    // 移除特殊字符，只保留字母、数字和中文
-    pageKey = pageKey.replace(/[^a-z0-9\u4e00-\u9fa5]/g, '');
-    if (pages[pageKey]) {
-        showMessage('已存在同名页面！', 'error');
-        return;
-    }
+    // 替换输入框为选择框
+    modalInput.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; margin: 1rem 0;">
+            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="radio" name="page-type" value="article" style="margin: 0;"> 文章类页面
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="radio" name="page-type" value="resource" style="margin: 0;"> 资源类页面
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="radio" name="page-type" value="game" style="margin: 0;"> 游戏类页面
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="radio" name="page-type" value="blank" style="margin: 0;"> 空白页面
+            </label>
+        </div>
+    `;
     
-    // 创建新页面数据
-    pages[pageKey] = {
-        pageTitle: pageName + ' - Zhishu的博客',
-        content: ['这是' + pageName + '页面的内容。']
+    modalCallback = () => {
+        const selectedType = document.querySelector('input[name="page-type"]:checked');
+        callback(pageName, selectedType ? selectedType.value : null);
+        // 恢复输入框并隐藏模态框
+        modalInput.innerHTML = '<input type="text" id="modal-input-field" placeholder="" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">';
+        hideModal();
     };
     
-    // 将新页面添加到导航菜单
-    if (!pages.home.navLinks) {
-        pages.home.navLinks = [
-            { "text": "首页", "url": "index.html" },
-            { "text": "关于", "url": "about.html" }
-        ];
-    }
-    pages.home.navLinks.push({
-        text: pageName,
-        url: 'page.html?page=' + pageKey
-    });
-    
-    // 添加到页面选择器
-    const option = document.createElement('option');
-    option.value = pageKey;
-    option.textContent = pageName;
-    pageSelect.appendChild(option);
-    
-    // 切换到新页面
-    pageSelect.value = pageKey;
-    handlePageSelectChange({ target: { value: pageKey } });
-    
-    showMessage('新页面已创建！', 'success');
+    customModal.style.display = 'flex';
+}
+
+// 处理添加新页面
+async function handleAddPage() {
+    // 显示自定义模态框获取页面名称
+    showModal('添加新页面', '请输入新页面名称（如：新闻）', async (pageName) => {
+        if (!pageName || pageName.trim() === '') {
+            if (pageName !== null) { // 只有当用户不是点击取消时才显示错误信息
+                showMessage('页面名称不能为空！', 'error');
+            }
+            return;
+        }
+        
+        // 显示页面类型选择模态框
+        showPageTypeModal(pageName, async (name, pageTypeValue) => {
+            if (!pageTypeValue) {
+                return;
+            }
+        
+            // 创建新页面数据
+            const newPage = {
+                name: name.trim(),
+                type: pageTypeValue,
+                pageTitle: name.trim() + ' - Zhishu的博客'
+            };
+            
+            try {
+                // 使用API创建新页面
+                const response = await fetch('/api/pages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(newPage)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `创建页面失败: ${response.statusText}`);
+                }
+                
+                // 先获取创建的页面数据，再重新加载所有页面
+                const createdPage = await response.json();
+                console.log('创建的页面:', createdPage);
+                
+                // 重新加载所有页面数据
+                await loadPages();
+                
+                // 切换到新页面
+                currentPage = createdPage.id;
+                
+                // 更新页面选择器
+                renderPageSelector();
+                
+                // 等待DOM更新后再设置值和加载表单
+                setTimeout(() => {
+                    const pageSelectElement = document.getElementById('page-select');
+                    if (pageSelectElement) {
+                        pageSelectElement.value = currentPage;
+                        loadPageToForm(currentPage);
+                    }
+                }, 100);
+                
+                showMessage('新页面已创建！', 'success');
+            } catch (error) {
+                console.error('创建页面失败:', error);
+                showMessage(`创建页面失败: ${error.message}`, 'error');
+            }
+        });
+});
 }
 
 // 处理保存页面
@@ -604,12 +799,28 @@ async function handleSavePage() {
     }
 }
 
-// 保存页面数据到localStorage
+// 保存页面数据到API
 async function savePagesToJSON() {
     try {
-        // 使用localStorage保存数据
-        localStorage.setItem('blogPages', JSON.stringify(pages, null, 2));
-        console.log('页面数据已成功保存到localStorage');
+        // 遍历所有页面并保存
+        for (const pageId in pages) {
+            const pageData = pages[pageId];
+            if (pageData) {
+                // 使用PUT请求更新页面
+                const response = await fetch(`/api/pages/${pageId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(pageData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`保存页面 ${pageId} 失败: ${response.statusText}`);
+                }
+            }
+        }
+        console.log('页面数据已成功保存到API');
         return true;
     } catch (error) {
         console.error('保存页面数据出错:', error);
@@ -635,24 +846,18 @@ function showAdminSection() {
 // 加载文章
 async function loadArticles() {
     try {
-        // 从JSON文件加载数据
-        const response = await fetch('data/articles.json');
+        // 从API加载文章数据
+        const response = await fetch('/api/articles');
         if (response.ok) {
             articles = await response.json();
+            console.log('从API加载文章数据成功');
         } else {
-            // 如果JSON文件不存在或加载失败，尝试从localStorage加载
-            const savedArticles = localStorage.getItem('blogArticles');
-            if (savedArticles) {
-                articles = JSON.parse(savedArticles);
-            }
+            console.error('加载文章数据失败:', response.statusText);
+            articles = [];
         }
     } catch (error) {
-        console.error('加载文章失败:', error);
-        // 加载失败时，尝试从localStorage加载
-        const savedArticles = localStorage.getItem('blogArticles');
-        if (savedArticles) {
-            articles = JSON.parse(savedArticles);
-        }
+        console.error('加载文章数据出错:', error);
+        articles = [];
     }
     renderArticlesList();
 }
@@ -661,20 +866,47 @@ async function loadArticles() {
 function renderArticlesList() {
     articlesList.innerHTML = '';
     
-    if (articles.length === 0) {
+    // 确保 articles 是一个数组
+    const validArticles = Array.isArray(articles) ? articles : [];
+    
+    if (validArticles.length === 0) {
         articlesList.innerHTML = '<div style="padding: 1rem; text-align: center; color: #666;">暂无文章</div>';
         return;
     }
     
+    // 获取当前选中的页面筛选器值
+    const selectedPageId = pageFilterSelect ? pageFilterSelect.value : 'all';
+    
+    // 筛选文章
+    let filteredArticles = validArticles;
+    if (selectedPageId !== 'all') {
+        filteredArticles = validArticles.filter(article => article.pageId === selectedPageId);
+    }
+    
+    if (filteredArticles.length === 0) {
+        articlesList.innerHTML = '<div style="padding: 1rem; text-align: center; color: #666;">该页面暂无文章</div>';
+        return;
+    }
+    
     // 按ID降序排序（最新的文章在前面）
-    const sortedArticles = [...articles].sort((a, b) => b.id - a.id);
+    const sortedArticles = [...filteredArticles].sort((a, b) => b.id - a.id);
     
     sortedArticles.forEach(article => {
         const articleItem = document.createElement('div');
         articleItem.className = 'article-item';
+        
+        // 获取文章所属页面名称
+        const pageName = getPageNameById(article.pageId);
+        
         articleItem.innerHTML = `
-            <h4>${article.title}</h4>
-            <div class="meta">${article.date} • ${article.author}</div>
+            <h4>${article.title || '无标题'}</h4>
+            <div class="meta">
+                ${article.date || ''} • ${article.author || '未知作者'} • 
+                <span class="page-info">${pageName || '未分配'}</span>
+            </div>
+            <div class="article-actions">
+                <button class="move-btn" data-article-id="${article.id}">移动到页面</button>
+            </div>
         `;
         
         articleItem.addEventListener('click', () => {
@@ -686,6 +918,13 @@ function renderArticlesList() {
             articleItem.classList.add('selected');
             // 加载文章到表单
             loadArticleToForm(article);
+        });
+        
+        // 绑定移动按钮事件
+        const moveBtn = articleItem.querySelector('.move-btn');
+        moveBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // 阻止冒泡，避免选中文章
+            handleMoveArticle(article.id);
         });
         
         articlesList.appendChild(articleItem);
@@ -738,34 +977,96 @@ async function handleSaveArticle() {
         content: contentInput.value.trim()
     };
     
-    if (currentArticle) {
-        // 更新现有文章
-        articleData.id = currentArticle.id;
-        const index = articles.findIndex(a => a.id === currentArticle.id);
-        if (index !== -1) {
-            articles[index] = articleData;
+    try {
+        if (currentArticle) {
+            // 更新现有文章
+            const response = await fetch(`/api/articles/${currentArticle.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(articleData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`更新文章失败: ${response.statusText}`);
+            }
+            
+            // 更新本地数据
+            const updatedArticle = await response.json();
+            const index = articles.findIndex(a => a.id === currentArticle.id);
+            if (index !== -1) {
+                articles[index] = updatedArticle;
+            }
+        } else {
+            // 创建新文章前，先获取所有页面列表
+            const pagesResponse = await fetch('/api/pages');
+            if (!pagesResponse.ok) {
+                throw new Error(`获取页面列表失败: ${pagesResponse.statusText}`);
+            }
+            const allPages = await pagesResponse.json();
+            
+            // 过滤出文章类页面
+            const articlePages = Object.values(allPages).filter(page => page.type === 'article' || page.id === 'home');
+            
+            // 创建一个Promise来处理模态框的异步选择
+            const selectedPageId = await new Promise((resolve) => {
+                // 替换输入框为页面选择下拉菜单
+                modalInput.innerHTML = `
+                    <div style="padding: 1rem;">
+                        <h4>选择文章所属页面:</h4>
+                        <select id="page-select-for-article" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                            ${articlePages.map(page => `<option value="${page.id}">${page.name}</option>`).join('')}
+                        </select>
+                    </div>
+                `;
+                
+                modalCallback = () => {
+                    const pageSelect = document.getElementById('page-select-for-article');
+                    resolve(pageSelect ? pageSelect.value : 'home');
+                    // 恢复输入框并隐藏模态框
+                    modalInput.innerHTML = '<input type="text" id="modal-input-field" placeholder="" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">';
+                    hideModal();
+                };
+                
+                customModal.style.display = 'flex';
+            });
+            
+            // 将选中的页面ID添加到文章数据中
+            articleData.pageId = selectedPageId;
+            
+            // 创建新文章
+            const response = await fetch('/api/articles', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(articleData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`创建文章失败: ${response.statusText}`);
+            }
+            
+            // 添加到本地数据
+            const newArticle = await response.json();
+            articles.push(newArticle);
         }
-    } else {
-        // 创建新文章
-        articleData.id = Date.now(); // 使用时间戳作为唯一ID
-        articles.push(articleData);
+        
+        // 显示成功消息
+        showMessage(currentArticle ? '文章更新成功！' : '文章添加成功！', 'success');
+        
+        // 重新渲染文章列表
+        renderArticlesList();
+        
+        // 如果是新文章，加载到表单
+        if (!currentArticle) {
+            loadArticleToForm(articles[articles.length - 1]);
+        }
+    } catch (error) {
+        console.error('保存文章失败:', error);
+        showMessage(`保存文章失败: ${error.message}`, 'error');
     }
-    
-    // 保存到localStorage
-    saveArticlesToLocalStorage();
-    
-    // 保存到JSON文件
-    const jsonSaved = await saveArticlesToJSON();
-    
-    // 显示消息
-    if (jsonSaved) {
-        showMessage(currentArticle ? '文章更新成功并已自动同步到博客！' : '文章添加成功并已自动同步到博客！', 'success');
-    } else {
-        showMessage(currentArticle ? '文章更新成功，但同步到博客失败！' : '文章添加成功，但同步到博客失败！', 'warning');
-    }
-    
-    // 重新渲染文章列表
-    renderArticlesList();
 }
 
 // 处理新建文章
@@ -779,17 +1080,10 @@ function saveArticlesToLocalStorage() {
     localStorage.setItem('blogArticles', JSON.stringify(articles));
 }
 
-// 保存文章到localStorage
+// 保存文章到localStorage (已废弃，使用API)
 async function saveArticlesToJSON() {
-    try {
-        // 使用localStorage保存数据
-        localStorage.setItem('blogArticles', JSON.stringify(articles, null, 2));
-        console.log('文章数据已成功保存到localStorage');
-        return true;
-    } catch (error) {
-        console.error('保存文章数据出错:', error);
-        return false;
-    }
+    // 这个函数已经不再使用，文章数据通过API直接保存
+    return true;
 }
 
 // 导出文章数据为JSON文件（替代方案）
@@ -825,24 +1119,23 @@ async function handleDeleteArticle() {
     }
     
     try {
-        // 从文章数组中删除文章
+        // 使用API删除文章
+        const response = await fetch(`/api/articles/${currentArticle.id}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`删除文章失败: ${response.statusText}`);
+        }
+        
+        // 从本地数据中删除
         const index = articles.findIndex(a => a.id === currentArticle.id);
         if (index !== -1) {
             articles.splice(index, 1);
         }
         
-        // 保存到localStorage
-        saveArticlesToLocalStorage();
-        
-        // 保存到JSON文件
-        const jsonSaved = await saveArticlesToJSON();
-        
-        // 显示消息
-        if (jsonSaved) {
-            showMessage('文章删除成功并已自动同步到博客！', 'success');
-        } else {
-            showMessage('文章删除成功，但同步到博客失败！', 'warning');
-        }
+        // 显示成功消息
+        showMessage('文章删除成功！', 'success');
         
         // 重新渲染文章列表
         renderArticlesList();
@@ -850,8 +1143,8 @@ async function handleDeleteArticle() {
         // 清空表单
         clearForm();
     } catch (error) {
-        console.error('删除文章出错:', error);
-        showMessage('删除文章失败！', 'error');
+        console.error('删除文章失败:', error);
+        showMessage(`删除文章失败: ${error.message}`, 'error');
     }
 }
 
@@ -864,6 +1157,102 @@ function handleExportArticles() {
     
     // 导出为JSON文件
     exportArticlesToJSON();
+}
+
+// 根据页面ID获取页面名称
+function getPageNameById(pageId) {
+    if (!pages || typeof pages !== 'object') {
+        return '未知页面';
+    }
+    
+    if (pageId in pages) {
+        return pages[pageId].name;
+    }
+    
+    return '未知页面';
+}
+
+// 处理移动文章
+async function handleMoveArticle(articleId) {
+    try {
+        // 获取所有页面列表
+        const pagesResponse = await fetch('/api/pages');
+        if (!pagesResponse.ok) {
+            throw new Error(`获取页面列表失败: ${pagesResponse.statusText}`);
+        }
+        const allPages = await pagesResponse.json();
+        
+        // 获取文章当前信息
+        const articleResponse = await fetch(`/api/articles/${articleId}`);
+        if (!articleResponse.ok) {
+            throw new Error(`获取文章信息失败: ${articleResponse.statusText}`);
+        }
+        const article = await articleResponse.json();
+        
+        // 创建一个Promise来处理模态框的异步选择
+        const selectedPageId = await new Promise((resolve) => {
+            // 替换输入框为页面选择下拉菜单
+            modalTitle.textContent = '选择目标页面';
+            modalInput.innerHTML = `
+                <div style="padding: 1rem;">
+                    <h4>将文章 "${article.title}" 移动到:</h4>
+                    <select id="target-page-select" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                        ${Object.values(allPages).filter(page => page.type === 'article' || page.id === 'home')
+                            .map(page => `<option value="${page.id}" ${page.id === article.pageId ? 'selected' : ''}>${page.name}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+            
+            modalCallback = () => {
+                const pageSelect = document.getElementById('target-page-select');
+                resolve(pageSelect ? pageSelect.value : null);
+                // 恢复输入框并隐藏模态框
+                modalInput.innerHTML = '<input type="text" id="modal-input-field" placeholder="" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">';
+                hideModal();
+            };
+            
+            customModal.style.display = 'flex';
+        });
+        
+        if (!selectedPageId || selectedPageId === article.pageId) {
+            return; // 用户取消或选择了相同页面
+        }
+        
+        // 更新文章的页面关联
+        const updateResponse = await fetch(`/api/articles/${articleId}/page`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ pageId: selectedPageId })
+        });
+        
+        if (!updateResponse.ok) {
+            throw new Error(`移动文章失败: ${updateResponse.statusText}`);
+        }
+        
+        // 更新本地数据
+        const updatedArticle = await updateResponse.json();
+        const index = articles.findIndex(a => a.id === articleId);
+        if (index !== -1) {
+            articles[index] = updatedArticle;
+        }
+        
+        // 显示成功消息
+        showMessage('文章已成功移动到新页面！', 'success');
+        
+        // 重新渲染文章列表
+        renderArticlesList();
+        
+        // 如果当前表单中加载的是被移动的文章，更新表单信息
+        if (currentArticle && currentArticle.id === articleId) {
+            loadArticleToForm(updatedArticle);
+        }
+        
+    } catch (error) {
+        console.error('移动文章失败:', error);
+        showMessage(`移动文章失败: ${error.message}`, 'error');
+    }
 }
 
 // 显示消息
