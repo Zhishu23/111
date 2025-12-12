@@ -38,10 +38,16 @@ const articlesList = document.getElementById('articles-list');
 const tabButtons = document.querySelectorAll('.tab-button');
 const tabContents = document.querySelectorAll('.tab-content');
 const pageSelect = document.getElementById('page-select');
+const addPageBtn = document.getElementById('add-page-btn');
 const homePageForm = document.getElementById('home-page-form');
 const aboutPageForm = document.getElementById('about-page-form');
+const customPageForm = document.getElementById('custom-page-form');
 const homePageTitle = document.getElementById('home-page-title');
-const homeLogo = document.getElementById('home-logo');
+const homeLogoType = document.getElementById('home-logo-type');
+const homeLogoText = document.getElementById('home-logo-text');
+const homeLogoImage = document.getElementById('home-logo-image');
+const homeLogoTextGroup = document.getElementById('home-logo-text-group');
+const homeLogoImageGroup = document.getElementById('home-logo-image-group');
 const homeFooter = document.getElementById('home-footer');
 const aboutPageTitle = document.getElementById('about-page-title');
 const aboutSectionTitle = document.getElementById('about-section-title');
@@ -71,6 +77,8 @@ function init() {
         button.addEventListener('click', handleTabChange);
     });
     pageSelect.addEventListener('change', handlePageSelectChange);
+    homeLogoType.addEventListener('change', handleLogoTypeChange);
+    addPageBtn.addEventListener('click', handleAddPage);
     addAboutParagraphBtn.addEventListener('click', addAboutParagraph);
     addContactInfoBtn.addEventListener('click', addContactInfo);
     savePageBtn.addEventListener('click', handleSavePage);
@@ -219,7 +227,22 @@ function loadPageToForm(pageKey) {
     
     if (pageKey === 'home') {
         homePageTitle.value = pageData.pageTitle;
-        homeLogo.value = pageData.logo;
+        
+        // 处理LOGO
+        if (pageData.logo && pageData.logo.type === 'image') {
+            homeLogoType.value = 'image';
+            homeLogoText.value = '';
+            homeLogoImage.value = pageData.logo.value || '';
+            homeLogoTextGroup.style.display = 'none';
+            homeLogoImageGroup.style.display = 'block';
+        } else {
+            homeLogoType.value = 'text';
+            homeLogoText.value = pageData.logo ? (pageData.logo.value || pageData.logo) : '';
+            homeLogoImage.value = '';
+            homeLogoTextGroup.style.display = 'block';
+            homeLogoImageGroup.style.display = 'none';
+        }
+        
         homeFooter.value = pageData.footerText;
     } else if (pageKey === 'about') {
         aboutPageTitle.value = pageData.pageTitle;
@@ -290,13 +313,74 @@ function removeContactInfo(button) {
     button.closest('.contact-info-item').remove();
 }
 
+// 处理LOGO类型切换
+function handleLogoTypeChange(e) {
+    const logoType = e.target.value;
+    if (logoType === 'text') {
+        homeLogoTextGroup.style.display = 'block';
+        homeLogoImageGroup.style.display = 'none';
+    } else {
+        homeLogoTextGroup.style.display = 'none';
+        homeLogoImageGroup.style.display = 'block';
+    }
+}
+
+// 处理添加新页面
+function handleAddPage() {
+    const pageName = prompt('请输入新页面名称（如：news）：');
+    if (!pageName || pageName.trim() === '') {
+        showMessage('页面名称不能为空！', 'error');
+        return;
+    }
+    
+    const pageKey = pageName.trim().toLowerCase();
+    if (pages[pageKey]) {
+        showMessage('已存在同名页面！', 'error');
+        return;
+    }
+    
+    // 创建新页面数据
+    pages[pageKey] = {
+        pageTitle: pageName + ' - Zhishu的博客',
+        content: ['这是' + pageName + '页面的内容。']
+    };
+    
+    // 添加到页面选择器
+    const option = document.createElement('option');
+    option.value = pageKey;
+    option.textContent = pageName;
+    pageSelect.appendChild(option);
+    
+    // 切换到新页面
+    pageSelect.value = pageKey;
+    handlePageSelectChange({ target: { value: pageKey } });
+    
+    showMessage('新页面已创建！', 'success');
+}
+
 // 处理保存页面
 async function handleSavePage() {
     if (currentPage === 'home') {
+        // 保存LOGO设置
+        const logoType = homeLogoType.value;
+        let logoData;
+        
+        if (logoType === 'text') {
+            logoData = {
+                type: 'text',
+                value: homeLogoText.value.trim()
+            };
+        } else {
+            logoData = {
+                type: 'image',
+                value: homeLogoImage.value.trim()
+            };
+        }
+        
         pages.home = {
             ...pages.home,
             pageTitle: homePageTitle.value.trim(),
-            logo: homeLogo.value.trim(),
+            logo: logoData,
             footerText: homeFooter.value.trim()
         };
     } else if (currentPage === 'about') {

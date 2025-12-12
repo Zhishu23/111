@@ -58,7 +58,15 @@ function renderNavbar() {
     const navLinks = document.querySelector('.nav-links');
     
     if (logo && pages.home && pages.home.logo) {
-        logo.textContent = pages.home.logo;
+        const logoData = pages.home.logo;
+        
+        if (logoData.type === 'image') {
+            // 图片LOGO
+            logo.innerHTML = `<img src="${logoData.value}" alt="网站LOGO" style="max-height: 40px; vertical-align: middle;">`;
+        } else {
+            // 文字LOGO
+            logo.textContent = logoData.value || logoData;
+        }
     }
     
     if (navLinks && pages.home && pages.home.navLinks) {
