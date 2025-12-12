@@ -49,6 +49,7 @@ const homeLogoImage = document.getElementById('home-logo-image');
 const homeLogoTextGroup = document.getElementById('home-logo-text-group');
 const homeLogoImageGroup = document.getElementById('home-logo-image-group');
 const homeFooter = document.getElementById('home-footer');
+const navLinksContainer = document.getElementById('nav-links');
 const aboutPageTitle = document.getElementById('about-page-title');
 const aboutSectionTitle = document.getElementById('about-section-title');
 const aboutContent = document.getElementById('about-content');
@@ -150,42 +151,83 @@ function handlePageSelectChange(e) {
     loadPageToForm(currentPage);
 }
 
+// 渲染页面选择器
+function renderPageSelector() {
+    const pageSelect = document.getElementById('page-select');
+    if (!pageSelect) return;
+    
+    // 保存当前选中的页面
+    const currentValue = pageSelect.value;
+    
+    // 清空现有选项，保留首页和关于页面
+    pageSelect.innerHTML = `
+        <option value="home">首页</option>
+        <option value="about">关于页面</option>
+    `;
+    
+    // 添加所有自定义页面
+    Object.keys(pages).forEach(pageKey => {
+        if (pageKey !== 'home' && pageKey !== 'about') {
+            const option = document.createElement('option');
+            option.value = pageKey;
+            option.textContent = pages[pageKey].pageTitle || pageKey;
+            pageSelect.appendChild(option);
+        }
+    });
+    
+    // 恢复之前的选择，如果不存在则选择首页
+    if (pageSelect.querySelector(`option[value="${currentValue}"]`)) {
+        pageSelect.value = currentValue;
+    } else {
+        pageSelect.value = currentPage;
+    }
+}
+
 // 加载页面数据
 async function loadPages() {
     try {
-        // 从JSON文件加载数据
-        const response = await fetch('data/pages.json');
-        if (response.ok) {
-            pages = await response.json();
+        // 优先从localStorage加载数据
+        const savedPages = localStorage.getItem('blogPages');
+        if (savedPages) {
+            pages = JSON.parse(savedPages);
+            console.log('从localStorage加载页面数据成功');
         } else {
-            // 如果JSON文件不存在或加载失败，使用默认数据
-            pages = {
-                home: {
-                    pageTitle: "Zhishu的博客",
-                    logo: "Zhishu的博客",
-                    navLinks: [
-                        { "text": "首页", "url": "index.html" },
-                        { "text": "关于", "url": "about.html" }
-                    ],
-                    footerText: "© 2025 Zhishu的博客. All rights reserved."
-                },
-                about: {
-                    pageTitle: "关于我 - Zhishu的博客",
-                    sectionTitle: "关于我",
-                    content: [
-                        "你好！欢迎来到我的个人博客。",
-                        "我是一名热爱学习和分享的技术爱好者，在这里我会记录我的学习心得、技术笔记和生活感悟。",
-                        "这个博客是我用HTML、CSS和JavaScript创建的，虽然简单但充满了我的心血。",
-                        "如果你对我的文章感兴趣，欢迎关注我的博客，也可以通过下方联系方式与我交流。"
-                    ],
-                    contactTitle: "联系方式",
-                    contactInfo: [
-                        { "type": "邮箱", "value": "your@email.com" },
-                        { "type": "GitHub", "value": "github.com/yourusername" },
-                        { "type": "微信", "value": "yourwechat" }
-                    ]
-                }
-            };
+            // 如果localStorage没有数据，尝试从JSON文件加载
+            const response = await fetch('data/pages.json');
+            if (response.ok) {
+                pages = await response.json();
+                console.log('从JSON文件加载页面数据成功');
+            } else {
+                // 如果JSON文件不存在或加载失败，使用默认数据
+                pages = {
+                    home: {
+                        pageTitle: "Zhishu的博客",
+                        logo: "Zhishu的博客",
+                        navLinks: [
+                            { "text": "首页", "url": "index.html" },
+                            { "text": "关于", "url": "about.html" }
+                        ],
+                        footerText: "© 2025 Zhishu的博客. All rights reserved."
+                    },
+                    about: {
+                        pageTitle: "关于我 - Zhishu的博客",
+                        sectionTitle: "关于我",
+                        content: [
+                            "你好！欢迎来到我的个人博客。",
+                            "我是一名热爱学习和分享的技术爱好者，在这里我会记录我的学习心得、技术笔记和生活感悟。",
+                            "这个博客是我用HTML、CSS和JavaScript创建的，虽然简单但充满了我的心血。",
+                            "如果你对我的文章感兴趣，欢迎关注我的博客，也可以通过下方联系方式与我交流。"
+                        ],
+                        contactTitle: "联系方式",
+                        contactInfo: [
+                            { "type": "邮箱", "value": "your@email.com" },
+                            { "type": "GitHub", "value": "github.com/yourusername" },
+                            { "type": "微信", "value": "yourwechat" }
+                        ]
+                    }
+                };
+                console.log('使用默认页面数据');
+            }
         }
     } catch (error) {
         console.error('加载页面数据失败:', error);
@@ -218,6 +260,9 @@ async function loadPages() {
             }
         };
     }
+    
+    // 渲染页面选择器
+    renderPageSelector();
 }
 
 // 加载页面数据到表单
@@ -225,7 +270,13 @@ function loadPageToForm(pageKey) {
     const pageData = pages[pageKey];
     if (!pageData) return;
     
+    // 隐藏所有表单
+    homePageForm.style.display = 'none';
+    aboutPageForm.style.display = 'none';
+    customPageForm.style.display = 'none';
+    
     if (pageKey === 'home') {
+        homePageForm.style.display = 'block';
         homePageTitle.value = pageData.pageTitle;
         
         // 处理LOGO
@@ -244,7 +295,11 @@ function loadPageToForm(pageKey) {
         }
         
         homeFooter.value = pageData.footerText;
+        
+        // 渲染导航菜单
+        renderNavLinks();
     } else if (pageKey === 'about') {
+        aboutPageForm.style.display = 'block';
         aboutPageTitle.value = pageData.pageTitle;
         aboutSectionTitle.value = pageData.sectionTitle;
         aboutContactTitle.value = pageData.contactTitle;
@@ -275,6 +330,32 @@ function loadPageToForm(pageKey) {
             `;
             contactInfo.appendChild(contactDiv);
         });
+    } else {
+        // 显示自定义页面表单
+        customPageForm.style.display = 'block';
+        
+        // 设置自定义页面标题
+        const customPageTitle = document.getElementById('custom-page-title');
+        if (customPageTitle) {
+            customPageTitle.value = pageData.pageTitle;
+        }
+        
+        // 渲染自定义页面内容段落
+        const customContent = document.getElementById('custom-content');
+        if (customContent) {
+            customContent.innerHTML = '';
+            pageData.content.forEach((paragraph, index) => {
+                const paragraphDiv = document.createElement('div');
+                paragraphDiv.className = 'form-group';
+                paragraphDiv.innerHTML = `
+                    <div style="display: flex; gap: 1rem;">
+                        <textarea rows="3" class="custom-page-paragraph" style="flex: 1; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; font-family: inherit;">${paragraph}</textarea>
+                        <button type="button" class="remove-contact-btn" onclick="removeCustomParagraph(this)">删除</button>
+                    </div>
+                `;
+                customContent.appendChild(paragraphDiv);
+            });
+        }
     }
 }
 
@@ -313,6 +394,79 @@ function removeContactInfo(button) {
     button.closest('.contact-info-item').remove();
 }
 
+// 添加自定义页面段落
+function addCustomParagraph() {
+    const customContent = document.getElementById('custom-content');
+    if (!customContent) return;
+    
+    const paragraphDiv = document.createElement('div');
+    paragraphDiv.className = 'form-group';
+    paragraphDiv.innerHTML = `
+        <div style="display: flex; gap: 1rem;">
+            <textarea rows="3" class="custom-page-paragraph" style="flex: 1; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; font-family: inherit;"></textarea>
+            <button type="button" class="remove-contact-btn" onclick="removeCustomParagraph(this)">删除</button>
+        </div>
+    `;
+    customContent.appendChild(paragraphDiv);
+}
+
+// 删除自定义页面段落
+function removeCustomParagraph(button) {
+    button.closest('.form-group').remove();
+}
+
+// 渲染导航链接
+function renderNavLinks() {
+    if (!navLinksContainer || !pages.home || !pages.home.navLinks) return;
+    
+    navLinksContainer.innerHTML = '';
+    pages.home.navLinks.forEach((link, index) => {
+        const linkDiv = document.createElement('div');
+        linkDiv.className = 'form-group nav-link-item';
+        linkDiv.innerHTML = `
+            <div style="display: flex; gap: 1rem;">
+                <input type="text" class="nav-link-text" value="${link.text}" placeholder="链接文字" style="flex: 1;">
+                <input type="text" class="nav-link-url" value="${link.url}" placeholder="链接URL" style="flex: 1;">
+                <button type="button" class="remove-contact-btn" onclick="removeNavLink(this, ${index})">删除</button>
+            </div>
+        `;
+        navLinksContainer.appendChild(linkDiv);
+    });
+}
+
+// 添加导航链接
+function addNavLink() {
+    if (!pages.home) pages.home = {};
+    if (!pages.home.navLinks) pages.home.navLinks = [];
+    
+    pages.home.navLinks.push({
+        text: '新链接',
+        url: '#'
+    });
+    
+    renderNavLinks();
+}
+
+// 删除导航链接
+function removeNavLink(button, index) {
+    if (pages.home && pages.home.navLinks) {
+        pages.home.navLinks.splice(index, 1);
+        renderNavLinks();
+    }
+}
+
+// 保存导航链接
+function saveNavLinks() {
+    if (!pages.home) pages.home = {};
+    if (!pages.home.navLinks) pages.home.navLinks = [];
+    
+    const navLinkItems = document.querySelectorAll('.nav-link-item');
+    pages.home.navLinks = Array.from(navLinkItems).map(item => ({
+        text: item.querySelector('.nav-link-text').value.trim(),
+        url: item.querySelector('.nav-link-url').value.trim()
+    })).filter(link => link.text && link.url);
+}
+
 // 处理LOGO类型切换
 function handleLogoTypeChange(e) {
     const logoType = e.target.value;
@@ -327,13 +481,16 @@ function handleLogoTypeChange(e) {
 
 // 处理添加新页面
 function handleAddPage() {
-    const pageName = prompt('请输入新页面名称（如：news）：');
+    const pageName = prompt('请输入新页面名称（如：新闻）：');
     if (!pageName || pageName.trim() === '') {
         showMessage('页面名称不能为空！', 'error');
         return;
     }
     
-    const pageKey = pageName.trim().toLowerCase();
+    // 生成URL友好的页面键名（转换为英文，替换空格和特殊字符）
+    let pageKey = pageName.trim().toLowerCase();
+    // 移除特殊字符，只保留字母、数字和中文
+    pageKey = pageKey.replace(/[^a-z0-9\u4e00-\u9fa5]/g, '');
     if (pages[pageKey]) {
         showMessage('已存在同名页面！', 'error');
         return;
@@ -344,6 +501,18 @@ function handleAddPage() {
         pageTitle: pageName + ' - Zhishu的博客',
         content: ['这是' + pageName + '页面的内容。']
     };
+    
+    // 将新页面添加到导航菜单
+    if (!pages.home.navLinks) {
+        pages.home.navLinks = [
+            { "text": "首页", "url": "index.html" },
+            { "text": "关于", "url": "about.html" }
+        ];
+    }
+    pages.home.navLinks.push({
+        text: pageName,
+        url: 'page.html?page=' + pageKey
+    });
     
     // 添加到页面选择器
     const option = document.createElement('option');
@@ -377,11 +546,15 @@ async function handleSavePage() {
             };
         }
         
+        // 保存导航菜单
+        saveNavLinks();
+        
         pages.home = {
             ...pages.home,
             pageTitle: homePageTitle.value.trim(),
             logo: logoData,
-            footerText: homeFooter.value.trim()
+            footerText: homeFooter.value.trim(),
+            navLinks: pages.home.navLinks
         };
     } else if (currentPage === 'about') {
         // 获取所有段落内容
@@ -406,6 +579,18 @@ async function handleSavePage() {
             contactTitle: aboutContactTitle.value.trim(),
             contactInfo: contactInfoItems
         };
+    } else {
+        // 保存自定义页面
+        const pageData = pages[currentPage];
+        if (pageData) {
+            pages[currentPage] = {
+                ...pageData,
+                pageTitle: document.getElementById('custom-page-title')?.value?.trim() || pageData.pageTitle,
+                content: Array.from(document.querySelectorAll('.custom-page-paragraph'))
+                    .map(textarea => textarea.value.trim())
+                    .filter(text => text !== '') || pageData.content
+            };
+        }
     }
     
     // 保存到JSON文件
@@ -419,44 +604,15 @@ async function handleSavePage() {
     }
 }
 
-// 保存页面数据到JSON文件
+// 保存页面数据到localStorage
 async function savePagesToJSON() {
     try {
-        // 确保使用当前服务器的URL
-        const serverUrl = window.location.origin;
-        const pagesUrl = `${serverUrl}/data/pages.json`;
-        
-        console.log('尝试保存页面数据到JSON文件...');
-        console.log('请求URL:', pagesUrl);
-        console.log('请求数据:', pages);
-        
-        const response = await fetch(pagesUrl, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(pages, null, 2)
-        });
-        
-        console.log('服务器响应状态:', response.status, response.statusText);
-        
-        // 获取完整响应内容
-        const responseText = await response.text();
-        console.log('服务器响应内容:', responseText);
-        
-        if (response.ok) {
-            console.log('页面数据已成功保存到JSON文件');
-            return true;
-        } else {
-            console.error('保存到JSON文件失败:', response.statusText);
-            console.error('响应内容:', responseText);
-            return false;
-        }
+        // 使用localStorage保存数据
+        localStorage.setItem('blogPages', JSON.stringify(pages, null, 2));
+        console.log('页面数据已成功保存到localStorage');
+        return true;
     } catch (error) {
-        console.error('保存到JSON文件出错:', error);
-        console.error('错误类型:', error.name);
-        console.error('错误信息:', error.message);
-        console.error('错误堆栈:', error.stack);
+        console.error('保存页面数据出错:', error);
         return false;
     }
 }
@@ -623,47 +779,15 @@ function saveArticlesToLocalStorage() {
     localStorage.setItem('blogArticles', JSON.stringify(articles));
 }
 
-// 保存文章到JSON文件
+// 保存文章到localStorage
 async function saveArticlesToJSON() {
     try {
-        // 直接更新articles.json文件
-        console.log('尝试保存文章到JSON文件...');
-        
-        // 确保使用当前服务器的URL
-        const serverUrl = window.location.origin;
-        const articlesUrl = `${serverUrl}/data/articles.json`;
-        
-        console.log('请求URL:', articlesUrl);
-        console.log('请求数据数量:', articles.length);
-        console.log('请求数据预览:', JSON.stringify(articles, null, 2).substring(0, 100) + '...');
-        
-        const response = await fetch(articlesUrl, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(articles, null, 2)
-        });
-        
-        console.log('服务器响应状态:', response.status, response.statusText);
-        
-        // 获取完整响应内容
-        const responseText = await response.text();
-        console.log('服务器响应内容:', responseText);
-        
-        if (response.ok) {
-            console.log('文章已成功保存到JSON文件');
-            return true;
-        } else {
-            console.error('保存到JSON文件失败:', response.statusText);
-            console.error('响应内容:', responseText);
-            return false;
-        }
+        // 使用localStorage保存数据
+        localStorage.setItem('blogArticles', JSON.stringify(articles, null, 2));
+        console.log('文章数据已成功保存到localStorage');
+        return true;
     } catch (error) {
-        console.error('保存到JSON文件出错:', error);
-        console.error('错误类型:', error.name);
-        console.error('错误信息:', error.message);
-        console.error('错误堆栈:', error.stack);
+        console.error('保存文章数据出错:', error);
         return false;
     }
 }

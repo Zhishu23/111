@@ -1,27 +1,48 @@
-// 从JSON文件加载文章数据
+// 从localStorage和JSON文件加载文章数据
 let articles = [];
 
 async function loadArticles() {
     try {
-        const response = await fetch('data/articles.json');
-        articles = await response.json();
-        return articles;
+        // 优先从localStorage加载数据
+        const savedArticles = localStorage.getItem('blogArticles');
+        if (savedArticles) {
+            articles = JSON.parse(savedArticles);
+            console.log('从localStorage加载文章数据成功');
+            return articles;
+        } else {
+            // 如果localStorage没有数据，从JSON文件加载
+            const response = await fetch('data/articles.json');
+            articles = await response.json();
+            console.log('从JSON文件加载文章数据成功');
+            return articles;
+        }
     } catch (error) {
         console.error('加载文章失败:', error);
         return [];
     }
 }
 
-// 从JSON文件加载页面数据
+// 从JSON文件和localStorage加载页面数据
 let pages = {};
 
 async function loadPages() {
     try {
-        const response = await fetch('data/pages.json');
-        pages = await response.json();
-        return pages;
+        // 优先从localStorage加载数据
+        const savedPages = localStorage.getItem('blogPages');
+        if (savedPages) {
+            pages = JSON.parse(savedPages);
+            console.log('从localStorage加载页面数据成功');
+            return pages;
+        } else {
+            // 如果localStorage没有数据，从JSON文件加载
+            const response = await fetch('data/pages.json');
+            pages = await response.json();
+            console.log('从JSON文件加载页面数据成功');
+            return pages;
+        }
     } catch (error) {
         console.error('加载页面数据失败:', error);
+        // 使用默认数据
         return {
             home: {
                 pageTitle: "Zhishu的博客",
@@ -55,6 +76,7 @@ async function loadPages() {
 // 渲染导航栏
 function renderNavbar() {
     const logo = document.querySelector('.logo');
+    const siteTitle = document.querySelector('.site-title');
     const navLinks = document.querySelector('.nav-links');
     
     if (logo && pages.home && pages.home.logo) {
@@ -62,11 +84,16 @@ function renderNavbar() {
         
         if (logoData.type === 'image') {
             // 图片LOGO
-            logo.innerHTML = `<img src="${logoData.value}" alt="网站LOGO" style="max-height: 40px; vertical-align: middle;">`;
+            logo.innerHTML = `<img src="${logoData.value}" alt="网站LOGO" style="max-height: 60px; width: auto; vertical-align: middle;">`;
         } else {
             // 文字LOGO
-            logo.textContent = logoData.value || logoData;
+            logo.innerHTML = `<span style="font-size: 1.5rem; font-weight: bold;">${logoData.value || logoData}</span>`;
         }
+    }
+    
+    // 更新网站标题
+    if (siteTitle && pages.home && pages.home.pageTitle) {
+        siteTitle.textContent = pages.home.pageTitle;
     }
     
     if (navLinks && pages.home && pages.home.navLinks) {
@@ -185,6 +212,48 @@ function renderArticleDetail() {
     }
 }
 
+// 渲染自定义页面
+function renderCustomPage() {
+    const customPageSection = document.querySelector('.custom-page-section');
+    
+    if (customPageSection) {
+        // 获取页面键
+        let pageKey = getUrlParam('page');
+        
+        if (pageKey && pages[pageKey]) {
+            const pageData = pages[pageKey];
+            
+            // 更新页面标题
+            document.title = pageData.pageTitle;
+            
+            // 更新页面主标题
+            const pageTitle = document.getElementById('page-title');
+            if (pageTitle) {
+                pageTitle.textContent = pageData.pageTitle;
+            }
+            
+            // 更新页面内容
+            const pageContent = document.getElementById('page-content');
+            if (pageContent) {
+                // 确保content是数组，如果不是则转换为数组
+                const contentArray = Array.isArray(pageData.content) ? pageData.content : [pageData.content];
+                pageContent.innerHTML = contentArray.map(paragraph => `<p>${paragraph}</p>`).join('');
+            }
+        } else {
+            // 页面不存在
+            const pageTitle = document.getElementById('page-title');
+            if (pageTitle) {
+                pageTitle.textContent = '页面不存在';
+            }
+            
+            const pageContent = document.getElementById('page-content');
+            if (pageContent) {
+                pageContent.innerHTML = '<p>您访问的页面不存在或已被删除。</p>';
+            }
+        }
+    }
+}
+
 // 页面加载完成后执行
 window.addEventListener('DOMContentLoaded', async () => {
     // 并行加载文章和页面数据
@@ -201,5 +270,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     // 如果是关于页面，渲染关于页面内容
     if (window.location.pathname.includes('about.html')) {
         renderAboutPage();
+    }
+    
+    // 如果是自定义页面，渲染自定义页面内容
+    if (window.location.pathname.includes('page.html')) {
+        renderCustomPage();
     }
 });

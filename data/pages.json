@@ -3,8 +3,18 @@
     "pageTitle": "Zhishu的博客",
     "logo": "Zhishu的博客",
     "navLinks": [
-      { "text": "首页", "url": "index.html" },
-      { "text": "关于", "url": "about.html" }
+      {
+        "text": "首页",
+        "url": "index.html"
+      },
+      {
+        "text": "关于",
+        "url": "about.html"
+      },
+      {
+        "text": "资源",
+        "url": "page.html?page=资源"
+      }
     ],
     "footerText": "© 2025 Zhishu的博客. All rights reserved."
   },
@@ -19,9 +29,24 @@
     ],
     "contactTitle": "联系方式",
     "contactInfo": [
-      { "type": "邮箱", "value": "your@email.com" },
-      { "type": "GitHub", "value": "github.com/yourusername" },
-      { "type": "微信", "value": "yourwechat" }
+      {
+        "type": "邮箱",
+        "value": "your@email.com"
+      },
+      {
+        "type": "GitHub",
+        "value": "github.com/yourusername"
+      },
+      {
+        "type": "微信",
+        "value": "yourwechat"
+      }
+    ]
+  },
+  "资源": {
+    "pageTitle": "资源 - Zhishu的博客",
+    "content": [
+      "这是资源页面的内容。"
     ]
   }
 }
